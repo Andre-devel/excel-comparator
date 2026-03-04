@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Excel Comparator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0C0E13;
+    --surface: #13161E;
+    --surface2: #1A1E2A;
+    --border: #252A38;
+    --accent: #4FFFB0;
+    --accent2: #4F9FFF;
+    --red: #FF4D4D;
+    --text: #E8EAED;
+    --muted: #6B7280;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,255,176,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,255,176,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease forwards;
+  }
+
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-tag::before {
+    content: '';
+    width: 20px;
+    height: 1px;
+    background: var(--accent);
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -1px;
+  }
+
+  h1 span {
+    color: var(--accent);
+  }
+
+  .subtitle {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+    max-width: 520px;
+    line-height: 1.6;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 20px;
+    animation: fadeUp 0.5s ease forwards;
+  }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title svg {
+    flex-shrink: 0;
+  }
+
+  /* File drop zones */
+  .files-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .files-grid { grid-template-columns: 1fr; }
+  }
+
+  .drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    background: var(--surface2);
+  }
+
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(79,255,176,0.04);
+  }
+
+  .drop-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .drop-icon {
+    width: 36px;
+    height: 36px;
+    margin: 0 auto 10px;
+    background: rgba(79,255,176,0.1);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .drop-label {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+
+  .drop-hint {
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .file-name {
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    word-break: break-all;
+    background: rgba(79,255,176,0.08);
+    border-radius: 4px;
+    padding: 4px 8px;
+    display: none;
+  }
+
+  .file-name.visible { display: block; }
+
+  /* Options */
+  .options-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .options-grid { grid-template-columns: 1fr; }
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.5px;
+  }
+
+  label span {
+    color: var(--accent);
+  }
+
+  input[type="text"] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+
+  input[type="text"]::placeholder { color: var(--muted); }
+  input[type="text"]:focus { border-color: var(--accent2); }
+
+  /* Button */
+  .btn-compare {
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #0C0E13;
+    border: none;
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-compare:hover:not(:disabled) {
+    background: #7FFFCE;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 24px rgba(79,255,176,0.25);
+  }
+
+  .btn-compare:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .btn-merge {
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-merge:hover:not(:disabled) {
+    background: rgba(79,159,255,0.1);
+    transform: translateY(-1px);
+  }
+
+  .btn-merge:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  #merge-result {
+    display: none;
+    margin-top: 16px;
+    animation: fadeUp 0.4s ease forwards;
+  }
+
+  #merge-result.visible { display: block; }
+
+  /* Spinner */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #0C0E13;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  .loading .spinner { display: block; }
+  .loading .btn-text { display: none; }
+
+  /* Result panel */
+  #result-panel {
+    display: none;
+    animation: fadeUp 0.4s ease forwards;
+  }
+
+  #result-panel.visible { display: block; }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 600px) {
+    .stats-row { grid-template-columns: 1fr; }
+  }
+
+  .stat-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .stat-box.danger { border-color: rgba(255,77,77,0.4); background: rgba(255,77,77,0.05); }
+  .stat-box.safe { border-color: rgba(79,255,176,0.3); background: rgba(79,255,176,0.04); }
+
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-box.danger .stat-value { color: var(--red); }
+  .stat-box.safe .stat-value { color: var(--accent); }
+  .stat-box .stat-value { color: var(--accent2); }
+
+  .stat-label {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.5px;
+  }
+
+  /* Download button */
+  .btn-download {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    background: transparent;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: 10px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    margin-bottom: 20px;
+  }
+
+  .btn-download:hover {
+    background: rgba(79,159,255,0.1);
+    transform: translateY(-1px);
+  }
+
+  /* Divergences table */
+  .table-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+
+  .table-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .table-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: rgba(255,77,77,0.15);
+    color: var(--red);
+    padding: 3px 8px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,77,77,0.3);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+
+  tbody tr:hover { background: var(--surface2); }
+  tbody tr:last-child { border-bottom: none; }
+
+  tbody td {
+    padding: 10px 14px;
+    vertical-align: top;
+    font-size: 13px;
+  }
+
+  .td-row {
+    font-family: var(--mono);
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .td-col {
+    font-family: var(--mono);
+    color: var(--accent2);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .td-val {
+    font-family: var(--mono);
+    font-size: 12px;
+    max-width: 200px;
+    word-break: break-word;
+  }
+
+  .td-val.v1 { color: var(--red); }
+  .td-val.v2 { color: var(--accent); }
+
+  .more-note {
+    text-align: center;
+    padding: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
+  }
+
+  /* Error panel */
+  #error-panel {
+    display: none;
+    background: rgba(255,77,77,0.07);
+    border: 1px solid rgba(255,77,77,0.3);
+    border-radius: 10px;
+    padding: 20px;
+    animation: fadeUp 0.4s ease;
+  }
+
+  #error-panel.visible { display: block; }
+
+  .error-title {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--red);
+    font-weight: 700;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  #error-message {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: #FF9999;
+    line-height: 1.7;
+    white-space: pre-line;
+  }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 32px;
+    color: var(--muted);
+  }
+
+  .empty-state svg { margin: 0 auto 12px; opacity: 0.3; }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-tag">Ferramenta de auditoria</div>
+    <h1>Excel<span>.</span>Comparator</h1>
+    <p class="subtitle">
+      Faça upload de dois arquivos .xlsx, configure as opções e gere um relatório completo com todas as divergências destacadas.
+    </p>
+  </div>
+
+  <!-- Upload card -->
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      Arquivos
+    </div>
+    <div class="files-grid">
+      <div>
+        <div class="drop-zone" id="zone1">
+          <input type="file" id="file1" accept=".xlsx,.xls" onchange="handleFile(1, this)"/>
+          <div class="drop-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4FFFB0" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
+          <div class="drop-label">ARQUIVO 1</div>
+          <div class="drop-hint">Referência</div>
+          <div class="file-name" id="fname1"></div>
+        </div>
+      </div>
+      <div>
+        <div class="drop-zone" id="zone2">
+          <input type="file" id="file2" accept=".xlsx,.xls" onchange="handleFile(2, this)"/>
+          <div class="drop-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4F9FFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          </div>
+          <div class="drop-label">ARQUIVO 2</div>
+          <div class="drop-hint">Para comparar</div>
+          <div class="file-name" id="fname2"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Options card -->
+  <div class="card">
+    <div class="card-title">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+      Opções <span style="color:var(--muted);font-size:10px;margin-left:8px;letter-spacing:0">(ambas opcionais)</span>
+    </div>
+    <div class="options-grid">
+      <div class="field">
+        <label for="primary_key">Chave primária <span>—</span> nome da coluna</label>
+        <input type="text" id="primary_key" placeholder="ex: ID, cpf, codigo"/>
+      </div>
+      <div class="field">
+        <label for="ignore_columns">Colunas a ignorar <span>—</span> separadas por vírgula</label>
+        <input type="text" id="ignore_columns" placeholder="ex: updated_at, log_date"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action -->
+  <button class="btn-compare" id="btn-compare" onclick="runComparison()">
+    <div class="spinner"></div>
+    <span class="btn-text">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline;vertical-align:middle;margin-right:6px"><polyline points="22 4 12 14.01 9 11.01"/><path d="M3 12a9 9 0 1 0 18 0"/></svg>
+      Comparar arquivos
+    </span>
+  </button>
+
+  <button class="btn-merge" id="btn-merge" onclick="runMerge()">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+    Juntar para conferência manual
+  </button>
+
+  <!-- Merge result -->
+  <div id="merge-result">
+    <a id="merge-download-link" class="btn-download" href="#" download>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Baixar arquivo de conferência .xlsx
+    </a>
+  </div>
+
+  <!-- Error panel -->
+  <div id="error-panel" style="margin-top:20px">
+    <div class="error-title">⚠ Erro na comparação</div>
+    <div id="error-message"></div>
+  </div>
+
+  <!-- Result panel -->
+  <div id="result-panel" style="margin-top:24px">
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row"></div>
+
+    <!-- Download -->
+    <a id="download-link" class="btn-download" href="#" download>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Baixar relatório .xlsx
+    </a>
+
+    <!-- Divergences table -->
+    <div class="card" id="divergences-card">
+      <div class="table-header">
+        <div class="table-title">Divergências encontradas</div>
+        <div class="table-badge" id="table-badge"></div>
+      </div>
+      <div id="divergences-content"></div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  function handleFile(num, input) {
+    const fname = document.getElementById(`fname${num}`);
+    if (input.files.length > 0) {
+      fname.textContent = '📄 ' + input.files[0].name;
+      fname.classList.add('visible');
+      document.getElementById(`zone${num}`).style.borderColor = 'var(--accent)';
+    }
+  }
+
+  // Drag and drop visual feedback
+  document.querySelectorAll('.drop-zone').forEach(zone => {
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('dragover'); });
+  });
+
+  function setLoading(v) {
+    const btn = document.getElementById('btn-compare');
+    document.getElementById('btn-merge').disabled = v;
+    if (v) {
+      btn.classList.add('loading');
+      btn.disabled = true;
+    } else {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  function setMergeLoading(v) {
+    const btn = document.getElementById('btn-merge');
+    document.getElementById('btn-compare').disabled = v;
+    btn.disabled = v;
+    btn.textContent = v ? 'Gerando...' : '';
+    if (!v) {
+      btn.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1"/><rect x="14" y="3" width="7" height="18" rx="1"/></svg>
+        Juntar para conferência manual`;
+    }
+  }
+
+  async function runMerge() {
+    const f1 = document.getElementById('file1').files[0];
+    const f2 = document.getElementById('file2').files[0];
+
+    if (!f1 || !f2) {
+      showError('Por favor, selecione os dois arquivos antes de juntar.');
+      return;
+    }
+
+    hideError();
+    document.getElementById('merge-result').classList.remove('visible');
+    setMergeLoading(true);
+
+    try {
+      const form = new FormData();
+      form.append('file1', f1);
+      form.append('file2', f2);
+
+      const pk = document.getElementById('primary_key').value.trim();
+      const ic = document.getElementById('ignore_columns').value.trim();
+      if (pk) form.append('primary_key', pk);
+      if (ic) form.append('ignore_columns', ic);
+
+      const res = await fetch('/api/merge', { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (!data.success) {
+        showError(data.error || 'Erro desconhecido.');
+        return;
+      }
+
+      const link = document.getElementById('merge-download-link');
+      link.href = data.download_url;
+      document.getElementById('merge-result').classList.add('visible');
+      document.getElementById('merge-result').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    } catch (err) {
+      showError('Falha na comunicação com o servidor: ' + err.message);
+    } finally {
+      setMergeLoading(false);
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('error-panel').classList.add('visible');
+    document.getElementById('result-panel').classList.remove('visible');
+    document.getElementById('error-message').textContent = msg;
+  }
+
+  function hideError() {
+    document.getElementById('error-panel').classList.remove('visible');
+  }
+
+  async function runComparison() {
+    const f1 = document.getElementById('file1').files[0];
+    const f2 = document.getElementById('file2').files[0];
+
+    if (!f1 || !f2) {
+      showError('Por favor, selecione os dois arquivos antes de comparar.');
+      return;
+    }
+
+    hideError();
+    document.getElementById('result-panel').classList.remove('visible');
+    setLoading(true);
+
+    try {
+      const form = new FormData();
+      form.append('file1', f1);
+      form.append('file2', f2);
+
+      const pk = document.getElementById('primary_key').value.trim();
+      const ic = document.getElementById('ignore_columns').value.trim();
+      if (pk) form.append('primary_key', pk);
+      if (ic) form.append('ignore_columns', ic);
+
+      const res = await fetch('/api/compare', { method: 'POST', body: form });
+      const data = await res.json();
+
+      if (!data.success) {
+        showError(data.error || 'Erro desconhecido.');
+        return;
+      }
+
+      renderResult(data);
+
+    } catch (err) {
+      showError('Falha na comunicação com o servidor: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function renderResult(data) {
+    const { stats, divergences, download_url } = data;
+    const hasDiv = stats.total_divergences > 0;
+
+    // Stats
+    document.getElementById('stats-row').innerHTML = `
+      <div class="stat-box">
+        <div class="stat-value">${stats.total_rows.toLocaleString('pt-BR')}</div>
+        <div class="stat-label">Linhas comparadas</div>
+      </div>
+      <div class="stat-box ${hasDiv ? 'danger' : 'safe'}">
+        <div class="stat-value">${stats.total_divergences.toLocaleString('pt-BR')}</div>
+        <div class="stat-label">Divergências</div>
+      </div>
+      <div class="stat-box ${hasDiv ? 'danger' : 'safe'}">
+        <div class="stat-value">${stats.divergent_rows.toLocaleString('pt-BR')}</div>
+        <div class="stat-label">Linhas afetadas</div>
+      </div>
+    `;
+
+    // Download link
+    const dlLink = document.getElementById('download-link');
+    dlLink.href = download_url;
+    dlLink.textContent = ''; // clear
+    dlLink.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Baixar relatório completo .xlsx
+    `;
+
+    // Divergences table
+    document.getElementById('table-badge').textContent =
+      divergences.length < stats.total_divergences
+        ? `mostrando ${divergences.length} de ${stats.total_divergences}`
+        : `${stats.total_divergences} total`;
+
+    if (divergences.length === 0) {
+      document.getElementById('divergences-content').innerHTML = `
+        <div class="empty-state">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4FFFB0" stroke-width="1.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <p style="color:var(--accent);font-family:var(--mono);font-weight:600">Arquivos idênticos</p>
+          <p style="margin-top:4px;font-size:13px">Nenhuma divergência encontrada nas colunas comparadas.</p>
+        </div>`;
+    } else {
+      let rows = divergences.map(d => `
+        <tr>
+          <td class="td-row">#${d.row === 0 ? 'N/A' : d.row}</td>
+          <td class="td-col">${escHtml(d.column)}</td>
+          <td class="td-val v1">${escHtml(d.value1)}</td>
+          <td class="td-val v2">${escHtml(d.value2)}</td>
+        </tr>
+      `).join('');
+
+      const extra = stats.total_divergences > divergences.length
+        ? `<div class="more-note">+ ${(stats.total_divergences - divergences.length).toLocaleString('pt-BR')} divergências adicionais no relatório .xlsx</div>`
+        : '';
+
+      document.getElementById('divergences-content').innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>LINHA</th><th>COLUNA</th><th>ARQUIVO 1</th><th>ARQUIVO 2</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          ${extra}
+        </div>`;
+    }
+
+    document.getElementById('result-panel').classList.add('visible');
+    document.getElementById('result-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+</script>
+</body>
+</html>
